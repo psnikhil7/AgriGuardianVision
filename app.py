@@ -346,6 +346,6 @@ with right:
 
 st.markdown("---")
 st.markdown(
-    "<div class='footer'>Developed by <b>Nikhil and Sam Sarvesh</b> 🌿</div>",
+    "<div class='footer'>Developed by <b>Nikhil 🌿</div>",
     unsafe_allow_html=True,
 )
