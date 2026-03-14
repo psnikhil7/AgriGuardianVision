@@ -409,7 +409,7 @@ st.markdown(
     <div class="hero">
         <div class="main-title">🌿 AgriGuardian Vision</div>
         <div class="subtitle">
-            Luxury AI-powered crop leaf diagnosis platform. Upload a leaf image and get a clear,
+            AI-powered crop leaf diagnosis platform. Upload a leaf image and get a clear,
             professional disease report with confidence, symptoms, prevention guidance, and next-step advice.
         </div>
         <div style="margin-top:12px;">
