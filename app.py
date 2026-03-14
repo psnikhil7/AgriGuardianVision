@@ -455,10 +455,14 @@ with right:
         with st.spinner("Analyzing leaf image with AgriGuardian AI..."):
             prediction = model.predict(img_array, verbose=0)
 
-        index = int(np.argmax(prediction))
-        confidence = float(prediction[0][index])
-        raw_label = class_names[index]
-        nice_label = beautify_label(raw_label)
+index = int(np.argmax(prediction))
+confidence = float(prediction[0][index])
+raw_label = class_names[index]
+nice_label = beautify_label(raw_label)
+
+# Top 3 predictions
+top3_idx = np.argsort(prediction[0])[-3:][::-1]
+top3_predictions = [(class_names[i], float(prediction[0][i])) for i in top3_idx]
 
         info = DISEASE_INFO.get(
             raw_label,
