@@ -26,18 +26,42 @@ def ensure_model_exists():
     return MODEL_PATH
 
 
-REAL_MODEL_PATH = ensure_model_exists()
-model = tf.keras.models.load_model(REAL_MODEL_PATH)
+@st.cache_resource
+def load_model():
+    real_model_path = ensure_model_exists()
+    return tf.keras.models.load_model(real_model_path)
 
-if os.path.exists(CLASS_FILE):
-    with open(CLASS_FILE) as f:
-        class_names = [c.strip() for c in f.readlines()]
-else:
-    class_names = ["diseased", "healthy"]
+
+def preprocess_image(image: Image.Image):
+    resized = image.resize((224, 224))
+    img_array = np.array(resized, dtype=np.float32) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+    return img_array
+
+
+def predict_leaf(model, image: Image.Image):
+    img_array = preprocess_image(image)
+    prediction = model.predict(img_array, verbose=0)
+    score = float(prediction[0][0])
+
+    healthy_prob = score
+    diseased_prob = 1 - score
+
+    if score >= 0.75:
+        label = "healthy"
+        confidence = healthy_prob
+    elif score <= 0.40:
+        label = "diseased"
+        confidence = diseased_prob
+    else:
+        label = "uncertain"
+        confidence = max(healthy_prob, diseased_prob)
+
+    return label, confidence, healthy_prob, diseased_prob
 
 
 st.set_page_config(
-    page_title="AgriGuardian Vision",
+    page_title="Diagnose Leaf",
     page_icon="🌿",
     layout="wide"
 )
@@ -53,10 +77,44 @@ st.markdown(
         color: white;
     }
 
+    [data-testid="stHeader"] {
+        background: rgba(6, 20, 27, 0.88);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    [data-testid="stSidebar"] {
+        background:
+            linear-gradient(180deg, #08161d 0%, #0b1f29 45%, #102f3f 100%);
+        border-right: 1px solid rgba(255,255,255,0.08);
+    }
+
+    [data-testid="stSidebarNav"] {
+        background: transparent;
+    }
+
+    [data-testid="stSidebarNav"] * {
+        color: #f8fafc !important;
+    }
+
+    [data-testid="stSidebarNav"] a {
+        border-radius: 14px;
+        margin-bottom: 6px;
+    }
+
+    [data-testid="stSidebarNav"] a:hover {
+        background: rgba(255,255,255,0.08);
+    }
+
+    [data-testid="stSidebarNav"] a[aria-current="page"] {
+        background: rgba(255,255,255,0.10);
+        border: 1px solid rgba(255,255,255,0.10);
+    }
+
     .block-container {
+        max-width: 1250px;
         padding-top: 2rem;
         padding-bottom: 2rem;
-        max-width: 1250px;
     }
 
     .hero {
@@ -70,7 +128,7 @@ st.markdown(
     }
 
     .main-title {
-        font-size: 3.4rem;
+        font-size: 3rem;
         font-weight: 900;
         line-height: 1.1;
         margin-bottom: 0.4rem;
@@ -79,7 +137,7 @@ st.markdown(
     }
 
     .subtitle {
-        font-size: 1.08rem;
+        font-size: 1.05rem;
         color: #d1fae5;
         line-height: 1.7;
     }
@@ -169,13 +227,6 @@ st.markdown(
         margin-bottom: 0.5rem;
     }
 
-    .footer {
-        text-align: center;
-        color: #d1d5db;
-        margin-top: 30px;
-        font-size: 16px;
-    }
-
     .small-note {
         color: #d1d5db;
         font-size: 0.95rem;
@@ -186,18 +237,20 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+model = load_model()
+
 st.markdown(
     """
     <div class="hero">
-        <div class="main-title">🌿 AgriGuardian Vision</div>
+        <div class="main-title">🌿 Diagnose Leaf</div>
         <div class="subtitle">
-            A premium AI-powered crop health screening platform that analyzes leaf images and classifies them as
-            <b>Healthy</b>, <b>Diseased</b>, or <b>Uncertain</b> with confidence-based interpretation.
+            Upload a clear plant leaf image and get an AI-based health screening result with
+            confidence score and probability output.
         </div>
         <div>
-            <span class="chip">Deep Learning</span>
-            <span class="chip">Healthy vs Diseased Detection</span>
-            <span class="chip">Professional AI Interface</span>
+            <span class="chip">Binary CNN Model</span>
+            <span class="chip">Healthy vs Diseased</span>
+            <span class="chip">Probability Output</span>
         </div>
     </div>
     """,
@@ -221,7 +274,7 @@ with left:
         display_image = Image.open(uploaded_file).convert("RGB")
         st.image(display_image, caption="Uploaded Leaf Sample", width=320)
         st.markdown(
-            "<div class='small-note'>Tip: Use a clear, well-lit leaf image for better prediction reliability.</div>",
+            "<div class='small-note'>Tip: Use a clear, well-lit image for better prediction reliability.</div>",
             unsafe_allow_html=True,
         )
     else:
@@ -234,27 +287,8 @@ with right:
     st.markdown("<div class='section-title'>AI Diagnosis Report</div>", unsafe_allow_html=True)
 
     if uploaded_file is not None and display_image is not None:
-        resized = display_image.resize((224, 224))
-        img_array = np.array(resized, dtype=np.float32) / 255.0
-        img_array = np.expand_dims(img_array, axis=0)
-
         with st.spinner("Analyzing leaf image with AgriGuardian AI..."):
-            prediction = model.predict(img_array, verbose=0)
-
-        score = float(prediction[0][0])
-
-        healthy_prob = score
-        diseased_prob = 1 - score
-
-        if score >= 0.75:
-            label = "healthy"
-            confidence = healthy_prob
-        elif score <= 0.40:
-            label = "diseased"
-            confidence = diseased_prob
-        else:
-            label = "uncertain"
-            confidence = max(healthy_prob, diseased_prob)
+            label, confidence, healthy_prob, diseased_prob = predict_leaf(model, display_image)
 
         if label == "healthy":
             st.markdown(
@@ -336,19 +370,10 @@ with right:
         st.markdown("<div class='lux-list'>", unsafe_allow_html=True)
         st.write(f"**Healthy probability:** {healthy_prob*100:.2f}%")
         st.write(f"**Diseased probability:** {diseased_prob*100:.2f}%")
+        st.write("**Threshold rule:** Healthy ≥ 75%, Diseased ≤ 40%, otherwise Uncertain")
         st.markdown("</div>", unsafe_allow_html=True)
-
-        st.warning(
-            "Note: This is an AI-assisted screening result. For major crop decisions, always confirm with a qualified agricultural expert."
-        )
 
     else:
         st.info("Your diagnosis report will appear here after image upload.")
 
     st.markdown("</div>", unsafe_allow_html=True)
-
-st.markdown("---")
-st.markdown(
-    "<div class='footer'>Developed by <b>Nikhil</b> 🌿</div>",
-    unsafe_allow_html=True,
-)
