@@ -1,5 +1,5 @@
 import streamlit as st
-
+st.title("Home")
 st.set_page_config(
     page_title="AgriGuardian Vision",
     page_icon="🌿",
